@@ -1,20 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import (
-                         QBrush,
-                         QColor, 
-                         QPainter, 
-                         QPixmap
-                         )
-from PyQt5.QtWidgets import (
-                             QPushButton, 
-                             QWidget, 
-                             QApplication, 
-                             QGraphicsScene,
-                             QGraphicsView,
-                             QLabel, 
-                             QGraphicsPixmapItem
-                             )
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 import pyproj
 import shapefile
 import shapely.geometry
@@ -43,7 +30,7 @@ class View(QGraphicsView):
         # draw the planet
         cx, cy = self.to_canvas_coordinates(28, 47)
         R = 6371000*self.ratio
-        earth = QtWidgets.QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
+        earth = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
         earth.setZValue(0)
         earth.setBrush(water_brush)
         
@@ -74,15 +61,15 @@ class View(QGraphicsView):
             if polygon.geom_type == 'Polygon':
                 polygon = [polygon]
             for land in polygon:
-                qt_polygon = QtGui.QPolygonF() 
+                qt_polygon = QPolygonF() 
                 land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
                 coords = land.replace('(', '').replace(')', '').split(',')
                 for lon, lat in zip(coords[0::2], coords[1::2]):
                     px, py = self.to_canvas_coordinates(lon, lat)
                     if px > 1e+10:
                         continue
-                    qt_polygon.append(QtCore.QPointF(px, py))
-                yield QtWidgets.QGraphicsPolygonItem(qt_polygon)
+                    qt_polygon.append(QPointF(px, py))
+                yield QGraphicsPolygonItem(qt_polygon)
 
     def wheelEvent(self, event):
         factor = 1.25 if event.angleDelta().y() > 0 else 0.8
@@ -96,7 +83,7 @@ class PyQTGISS(QWidget):
     def __init__(self):
         super().__init__()
         self.view = View(self)
-        layout = QtWidgets.QGridLayout(self)
+        layout = QGridLayout(self)
         layout.addWidget(self.view, 0, 0, 1, 1)
 
 if __name__ == '__main__':
