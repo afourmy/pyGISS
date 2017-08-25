@@ -74,9 +74,7 @@ class Map(tk.Canvas):
         self.draw_map()
         
     def print_coords(self, event):
-        print(event.x, event.y)
         event.x, event.y = self.canvasx(event.x), self.canvasy(event.y)
-        print(event.x, event.y)
         print(*self.to_geographical_coordinates(event.x, event.y))
         
     def zoomer(self, event, factor=None):

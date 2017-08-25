@@ -31,8 +31,8 @@ class Controller(tk.Tk):
         
     def __init__(self, path_app):
         super().__init__()
-        self.title('Extended PyGISS: A full-on GIS software')
-        path_icon = abspath(join(path_app, 'images'))
+        self.title('Extended PyGISS')
+        path_icon = abspath(join(path_app, pardir, 'images'))
         
         # generate the PSF tk images
         img_psf = ImageTk.Image.open(join(

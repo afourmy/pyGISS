@@ -1,11 +1,9 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import pyproj
 import shapefile
 import shapely.geometry
-import sys
 
 class View(QGraphicsView):
     
@@ -86,7 +84,8 @@ class PyQTGISS(QWidget):
         layout = QGridLayout(self)
         layout.addWidget(self.view, 0, 0, 1, 1)
 
-if __name__ == '__main__':
+if str.__eq__(__name__, '__main__'):
+    import sys
     app = QApplication(sys.argv)
     window = PyQTGISS()
     window.setGeometry(100, 100, 1500, 900)
