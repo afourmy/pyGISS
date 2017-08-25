@@ -1,8 +1,40 @@
 from inspect import stack
 from os.path import abspath, dirname, join, pardir
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import (
+                          QByteArray,
+                          QDataStream,
+                          QIODevice,
+                          QMimeData,
+                          QPoint,
+                          QPointF,
+                          Qt
+                          )
+from PyQt5.QtGui import (
+                         QBrush,
+                         QColor, 
+                         QDrag, 
+                         QIcon,
+                         QPainter, 
+                         QPixmap,
+                         QPolygonF
+                         )
+from PyQt5.QtWidgets import (
+                             QAction,
+                             QApplication, 
+                             QFrame,
+                             QGraphicsEllipseItem,
+                             QGraphicsPixmapItem,
+                             QGraphicsPolygonItem,
+                             QGraphicsScene,
+                             QGraphicsView,
+                             QGridLayout,
+                             QGroupBox,
+                             QHBoxLayout,
+                             QLabel,
+                             QMainWindow,
+                             QPushButton, 
+                             QWidget,  
+                             )
 import pyproj
 import shapefile
 import shapely.geometry
@@ -78,8 +110,19 @@ class View(QGraphicsView):
     def mousePressEvent(self, event):
         pos = self.mapToScene(event.pos())
         print(*self.to_geographical_coordinates(pos.x(), pos.y()))
+        
+    def dropEvent(self, event):
+        pos = self.mapToScene(event.pos())
+        geo_pos = self.to_geographical_coordinates(pos.x(), pos.y())
+        if event.mimeData().hasFormat('application/x-dnditemdata'):
+            item_data = event.mimeData().data('application/x-dnditemdata')
+            dataStream = QDataStream(item_data, QIODevice.ReadOnly)
+            pixmap, offset = QPixmap(), QPoint()
+            dataStream >> pixmap >> offset
+            # new_gnode = GraphicalNetworkNode(self)
+            # new_gnode.setPos(pos - offset)
 
-class pyGISS(QMainWindow):
+class Controller(QMainWindow):
     
     def __init__(self, path_app):
         super().__init__()
@@ -112,39 +155,53 @@ class pyGISS(QMainWindow):
         selection_mode.setStatusTip('Switch to selection mode')
         selection_mode.triggered.connect(self.add_project)
         
-        self.node_pixmap = QPixmap(join(path_icon, 'icon'))
+        self.node_pixmap = QPixmap(join(path_icon, 'node.png'))
         
         self.view = View(self)
+        self.main_menu = MainMenu(self)
         
         layout = QHBoxLayout(central_widget)
-        # layout.addWidget(main_menu) 
+        layout.addWidget(self.main_menu) 
         layout.addWidget(self.view)
         
     def add_project(self):
         pass
         
-class NodeCreationPanel(QGroupBox):
+class MainMenu(QWidget):
     
     def __init__(self, controller):
         super().__init__(controller)
         self.controller = controller
-        self.setTitle('Node creation')
         self.setMinimumSize(300, 300)
         self.setAcceptDrops(True)
                 
-        # exit connection lost because of the following lines
-        layout = QtWidgets.QGridLayout(self)
-        label = QLabel(self)
-        pixmap = image.scaled(
-                              label.size(), 
-                              Qt.KeepAspectRatio,
-                              Qt.SmoothTransformation
-                              )
+        node_creation_groupbox = NodeCreation(self.controller)
+                
+        map_projection_groupbox = QGroupBox()
+        
+        layout = QGridLayout(self)
+        layout.addWidget(node_creation_groupbox)
+        layout.addWidget(map_projection_groupbox)
+        
+class NodeCreation(QGroupBox):
+    
+    def __init__(self, controller):
+        super().__init__(controller)
+        self.controller = controller
+        
+        label = QLabel()
+        pixmap = self.controller.node_pixmap.scaled(
+                                                    label.size(), 
+                                                    Qt.KeepAspectRatio,
+                                                    Qt.SmoothTransformation
+                                                    )
         label.setPixmap(self.controller.node_pixmap)
         label.show()
         label.setAttribute(Qt.WA_DeleteOnClose)
+        
+        layout = QGridLayout(self)
         layout.addWidget(label, 0, 0)
-            
+        
     def dragMoveEvent(self, event):
         if event.mimeData().hasFormat('application/x-dnditemdata'):
             if event.source() == self:
@@ -158,20 +215,20 @@ class NodeCreationPanel(QGroupBox):
     dragEnterEvent = dragMoveEvent
 
     def mousePressEvent(self, event):
-        # retrieve the label 
+        print('test')
         child = self.childAt(event.pos())
         if not child:
             return
         
         pixmap = QPixmap(child.pixmap())
-        item_data = QtCore.QByteArray()
-        data_stream = QtCore.QDataStream(item_data, QtCore.QIODevice.WriteOnly)
-        data_stream << pixmap << QtCore.QPoint(event.pos() - child.pos())
+        item_data = QByteArray()
+        data_stream = QDataStream(item_data, QIODevice.WriteOnly)
+        data_stream << pixmap << QPoint(event.pos() - child.pos())
 
-        mime_data = QtCore.QMimeData()
+        mime_data = QMimeData()
         mime_data.setData('application/x-dnditemdata', item_data)
 
-        drag = QtGui.QDrag(self)
+        drag = QDrag(self)
         drag.setMimeData(mime_data)
         drag.setPixmap(pixmap)
         drag.setHotSpot(event.pos() - child.pos())
@@ -184,9 +241,9 @@ class NodeCreationPanel(QGroupBox):
 
 if str.__eq__(__name__, '__main__'):
     import sys
-    app = QApplication(sys.argv)
+    pyGISS = QApplication(sys.argv)
     path_app = dirname(abspath(stack()[0][1]))
-    window = pyGISS(path_app)
-    window.setGeometry(100, 100, 1500, 900)
-    window.show()
-    sys.exit(app.exec_())
+    controller = Controller(path_app)
+    controller.setGeometry(100, 100, 1500, 900)
+    controller.show()
+    sys.exit(pyGISS.exec_())
