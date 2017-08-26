@@ -141,8 +141,6 @@ class View(QGraphicsView):
         if event.button() == Qt.RightButton:
             self.cursor_pos = event.pos()
         super().mousePressEvent(event)
-        # pos = self.mapToScene(event.pos())
-        # print(*self.to_geographical_coordinates(pos.x(), pos.y()))
         
     ## Drag & Drop system
     
@@ -156,8 +154,7 @@ class View(QGraphicsView):
         pos = self.mapToScene(event.pos())
         geo_pos = self.to_geographical_coordinates(pos.x(), pos.y())
         if event.mimeData().hasFormat('application/x-dnditemdata'):
-            new_node = Node(self.controller)
-            new_node.setPos(pos)
+            new_node = Node(self.controller, pos)
 
 class Controller(QMainWindow):
     
@@ -192,14 +189,16 @@ class Controller(QMainWindow):
         selection_mode.setStatusTip('Switch to selection mode')
         selection_mode.triggered.connect(self.add_project)
         
-        self.node_pixmap = QPixmap(join(path_icon, 'node.png'))
-        self.selected_node_pixmap = QPixmap(join(path_icon, 'selected_node.png'))
-        self.gnode_pixmap = QPixmap(join(path_icon, 'node.png')).scaled(
+        path_node = join(path_icon, 'node.png')
+        path_selected_node = join(path_icon, 'selected_node.png')
+        self.node_pixmap = QPixmap(path_node)
+        self.selected_node_pixmap = QPixmap(path_selected_node)
+        self.gnode_pixmap = QPixmap(path_node).scaled(
                                                     QSize(100, 100), 
                                                     Qt.KeepAspectRatio,
                                                     Qt.SmoothTransformation
                                                     )
-        self.selected_gnode_pixmap = QPixmap(join(path_icon, 'node.png')).scaled(
+        self.selected_gnode_pixmap = QPixmap(path_selected_node).scaled(
                                                     QSize(100, 100), 
                                                     Qt.KeepAspectRatio,
                                                     Qt.SmoothTransformation
@@ -288,9 +287,10 @@ class NodeCreation(QGroupBox):
             
 class Node(QGraphicsPixmapItem):
     
-    def __init__(self, controller):
+    def __init__(self, controller, position):
         self.controller = controller
-
+        self.view = controller.view
+        
         # we retrieve the pixmap based on the subtype to initialize a QGPI
         self.pixmap = self.controller.gnode_pixmap
         self.selection_pixmap = self.controller.selected_gnode_pixmap                                                
@@ -305,8 +305,9 @@ class Node(QGraphicsPixmapItem):
                                )
                        )
         self.setZValue(10)
-        self.controller.view.scene.addItem(self)
+        self.view.scene.addItem(self)
         self.setCursor(QCursor(Qt.PointingHandCursor))
+        self.setPos(position)
         
     def itemChange(self, change, value):
         if change == self.ItemSelectedHasChanged:
@@ -314,6 +315,17 @@ class Node(QGraphicsPixmapItem):
                 self.setPixmap(self.selection_pixmap)
             else:
                 self.setPixmap(self.pixmap)
+        if change == self.ItemPositionHasChanged:
+            x, y = self.pos().x(), self.pos().y()
+            lon, lat = self.view.to_geographical_coordinates(x, y)
+            lon, lat = round(lon, 4), round(lat, 4)
+            # when the node is created, the ItemPositionHasChanged is triggered:
+            # we create the label
+            if not hasattr(self, 'label'):
+                self.label = self.view.scene.addSimpleText('test')
+                self.label.setZValue(15)
+            self.label.setPos(self.pos() + QPoint(-70, 50))
+            self.label.setText('({}, {})'.format(lon, lat))
         return QGraphicsPixmapItem.itemChange(self, change, value)
         
 if str.__eq__(__name__, '__main__'):
