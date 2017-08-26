@@ -182,7 +182,6 @@ class Map(tk.Canvas):
         self.tag_bind('node', '<Button-1>', self.find_closest_node)
         self.tag_bind('node', '<B1-Motion>', self.node_motion)
         
-    # @update_coordinates decorator
     def update_coordinates(function):
         def wrapper(self, event, *others):
             event.x, event.y = self.canvasx(event.x), self.canvasy(event.y)

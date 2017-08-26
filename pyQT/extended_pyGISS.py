@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
                              QAction,
                              QApplication, 
                              QComboBox,
+                             QFileDialog,
                              QFrame,
                              QGraphicsEllipseItem,
                              QGraphicsItem,
@@ -47,6 +48,7 @@ from PyQt5.QtWidgets import (
                              )
 import shapefile
 import shapely.geometry
+import xlrd
 
 class View(QGraphicsView):
     
@@ -65,15 +67,14 @@ class View(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setRenderHint(QPainter.Antialiasing)
         self.proj = 'Spherical'
-        self.ratio, self.offset = 1/1000, (0, 0)
+        self.ratio, self.offset = 1/400, (0, 0)
         self.display = True
+        self.shapefile = join(controller.path_shapefiles, 'World countries.shp')
         
         # brush for water and lands
         self.water_brush = QBrush(QColor(64, 164, 223))
         self.land_brush = QBrush(QColor(52, 165, 111))
         self.land_pen = QPen(QColor(52, 165, 111))
-                
-        self.shapefile = 'C:/Users/minto/Desktop/pyGISS/shapefiles/World countries.shp'
         
         # draw the map 
         self.polygons = self.scene.createItemGroup(self.draw_polygons())
@@ -213,7 +214,10 @@ class Controller(QMainWindow):
     
     def __init__(self, path_app):
         super().__init__()
-        path_icon = abspath(join(path_app, pardir, 'images'))
+        self.path_shapefiles = join(path_app, pardir, 'shapefiles')
+        path_icon = join(path_app, pardir, 'images')
+        # set the icon
+        self.setWindowIcon(QIcon(join(path_icon, 'globe.png')))
         
         # a QMainWindow needs a central widget for the layout
         central_widget = QWidget(self)
@@ -230,17 +234,21 @@ class Controller(QMainWindow):
         delete_project.setStatusTip('Delete the current project')
         delete_project.triggered.connect(self.close)
         
-        self.statusBar()
+        import_shapefile_icon = QIcon(join(path_icon, 'globe.png'))
+        import_shapefile = QAction(import_shapefile_icon, 'Import a shapefile', self)
+        import_shapefile.setStatusTip('Import a shapefile')
+        import_shapefile.triggered.connect(self.import_shapefile)
         
-        new_project_icon = QIcon(join(path_icon, 'new_project.png'))
-        new_project = QAction(new_project_icon, 'New project', self)
-        new_project.setStatusTip('Create a new project')
-        new_project.triggered.connect(self.add_project)
+        import_project_icon = QIcon(join(path_icon, 'import_project.png'))
+        import_project = QAction(import_project_icon, 'Import a Excel project', self)
+        import_project.setStatusTip('Import a project (Excel format)')
+        import_project.triggered.connect(self.import_project)
         
-        selection_icon = QIcon(join(path_icon, 'selection.png'))
-        selection_mode = QAction(selection_icon, 'Selection mode', self)
-        selection_mode.setStatusTip('Switch to selection mode')
-        selection_mode.triggered.connect(self.add_project)
+        toolbar = self.addToolBar('')
+        toolbar.resize(1500, 1500)
+        toolbar.setIconSize(QSize(70, 70))
+        toolbar.addAction(import_shapefile)
+        toolbar.addAction(import_project)
         
         # paths to the icons (standard node and selected node)
         path_node = join(path_icon, 'node.png')
@@ -268,8 +276,25 @@ class Controller(QMainWindow):
         layout.addWidget(self.main_menu) 
         layout.addWidget(self.view)
         
-    def add_project(self):
-        pass
+    def import_project(self):
+        filepath = QFileDialog.getOpenFileName(
+                                            self, 
+                                            'Import project', 
+                                            'Choose a project to import'
+                                            )[0]
+        book = xlrd.open_workbook(filepath)
+        sheet = book.sheet_by_index(0)
+        for row_index in range(1, sheet.nrows):
+            x, y = self.view.to_canvas_coordinates(*sheet.row_values(row_index))
+            Node(self, QPointF(x, y))
+        
+    def import_shapefile(self):
+        self.view.shapefile = QFileDialog.getOpenFileName(
+                                            self, 
+                                            'Import a shapefile', 
+                                            'Choose a shapefile to import'
+                                            )[0]
+        self.view.redraw_map()
         
 class MainMenu(QWidget):
     
@@ -354,7 +379,7 @@ class GISParametersMenu(QGroupBox):
         
         # choose the map/nodes ratio
         ratio = QLabel('Node size')
-        self.ratio_edit = QLineEdit('100')
+        self.ratio_edit = QLineEdit('400')
         self.ratio_edit.setMaximumWidth(120)
         
         draw_map_button = QPushButton('Redraw map')
@@ -461,6 +486,7 @@ if str.__eq__(__name__, '__main__'):
     pyGISS.setStyle(QStyleFactory.create('Fusion'))
     path_app = dirname(abspath(stack()[0][1]))
     controller = Controller(path_app)
+    controller.setWindowTitle('pyGISS: a lightweight GIS software')
     controller.setGeometry(100, 100, 1500, 900)
     controller.show()
     sys.exit(pyGISS.exec_())
