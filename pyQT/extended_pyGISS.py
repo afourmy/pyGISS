@@ -7,10 +7,12 @@ from PyQt5.QtCore import (
                           QMimeData,
                           QPoint,
                           QPointF,
+                          QSize,
                           Qt
                           )
 from PyQt5.QtGui import (
                          QBrush,
+                         QCursor,
                          QColor, 
                          QDrag, 
                          QIcon,
@@ -23,6 +25,7 @@ from PyQt5.QtWidgets import (
                              QApplication, 
                              QFrame,
                              QGraphicsEllipseItem,
+                             QGraphicsItem,
                              QGraphicsPixmapItem,
                              QGraphicsPolygonItem,
                              QGraphicsScene,
@@ -46,8 +49,9 @@ class View(QGraphicsView):
     'spherical': pyproj.Proj('+proj=ortho +lon_0=28 +lat_0=47')
     }
     
-    def __init__(self, parent):
+    def __init__(self, controller):
         super().__init__()
+        self.controller = controller
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
@@ -103,24 +107,57 @@ class View(QGraphicsView):
                     qt_polygon.append(QPointF(px, py))
                 yield QGraphicsPolygonItem(qt_polygon)
 
+    ## Zoom system
+
+    def zoom_in(self):
+        self.scale(1.25, 1.25)
+        
+    def zoom_out(self):
+        self.scale(1/1.25, 1/1.25)
+        
     def wheelEvent(self, event):
-        factor = 1.25 if event.angleDelta().y() > 0 else 0.8
-        self.scale(factor, factor)
+        self.zoom_in() if event.angleDelta().y() > 0 else self.zoom_out()
+        
+    ## Mouse bindings
+        
+    def mouseMoveEvent(self, event):
+        # sliding the scrollbar with the right-click button
+        if event.buttons() == Qt.RightButton:
+            self.trigger_menu = False
+            offset = self.cursor_pos - event.pos()
+            self.cursor_pos = event.pos()
+            x_value = self.horizontalScrollBar().value() + offset.x()
+            y_value = self.verticalScrollBar().value() + offset.y()
+            self.horizontalScrollBar().setValue(x_value)
+            self.verticalScrollBar().setValue(y_value)
+        super().mouseMoveEvent(event)
         
     def mousePressEvent(self, event):
-        pos = self.mapToScene(event.pos())
-        print(*self.to_geographical_coordinates(pos.x(), pos.y()))
+        # activate rubberband for selection
+        # by default, the rubberband is active for both clicks, we have to
+        # deactivate it explicitly for the right-click
+        if event.buttons() == Qt.LeftButton:
+            self.setDragMode(QGraphicsView.RubberBandDrag)
+        if event.button() == Qt.RightButton:
+            self.cursor_pos = event.pos()
+        super().mousePressEvent(event)
+        # pos = self.mapToScene(event.pos())
+        # print(*self.to_geographical_coordinates(pos.x(), pos.y()))
+        
+    ## Drag & Drop system
+    
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat('application/x-dnditemdata'):
+            event.acceptProposedAction()
+
+    dragMoveEvent = dragEnterEvent
         
     def dropEvent(self, event):
         pos = self.mapToScene(event.pos())
         geo_pos = self.to_geographical_coordinates(pos.x(), pos.y())
         if event.mimeData().hasFormat('application/x-dnditemdata'):
-            item_data = event.mimeData().data('application/x-dnditemdata')
-            dataStream = QDataStream(item_data, QIODevice.ReadOnly)
-            pixmap, offset = QPixmap(), QPoint()
-            dataStream >> pixmap >> offset
-            # new_gnode = GraphicalNetworkNode(self)
-            # new_gnode.setPos(pos - offset)
+            new_node = Node(self.controller)
+            new_node.setPos(pos)
 
 class Controller(QMainWindow):
     
@@ -156,6 +193,17 @@ class Controller(QMainWindow):
         selection_mode.triggered.connect(self.add_project)
         
         self.node_pixmap = QPixmap(join(path_icon, 'node.png'))
+        self.selected_node_pixmap = QPixmap(join(path_icon, 'selected_node.png'))
+        self.gnode_pixmap = QPixmap(join(path_icon, 'node.png')).scaled(
+                                                    QSize(100, 100), 
+                                                    Qt.KeepAspectRatio,
+                                                    Qt.SmoothTransformation
+                                                    )
+        self.selected_gnode_pixmap = QPixmap(join(path_icon, 'node.png')).scaled(
+                                                    QSize(100, 100), 
+                                                    Qt.KeepAspectRatio,
+                                                    Qt.SmoothTransformation
+                                                    )
         
         self.view = View(self)
         self.main_menu = MainMenu(self)
@@ -190,12 +238,9 @@ class NodeCreation(QGroupBox):
         self.controller = controller
         
         label = QLabel()
-        pixmap = self.controller.node_pixmap.scaled(
-                                                    label.size(), 
-                                                    Qt.KeepAspectRatio,
-                                                    Qt.SmoothTransformation
-                                                    )
+        label.setMaximumSize(200, 200)
         label.setPixmap(self.controller.node_pixmap)
+        label.setScaledContents(True)
         label.show()
         label.setAttribute(Qt.WA_DeleteOnClose)
         
@@ -215,30 +260,62 @@ class NodeCreation(QGroupBox):
     dragEnterEvent = dragMoveEvent
 
     def mousePressEvent(self, event):
-        print('test')
+
         child = self.childAt(event.pos())
+        
         if not child:
             return
         
-        pixmap = QPixmap(child.pixmap())
-        item_data = QByteArray()
-        data_stream = QDataStream(item_data, QIODevice.WriteOnly)
-        data_stream << pixmap << QPoint(event.pos() - child.pos())
-
+        pixmap = QPixmap(child.pixmap().scaled(
+                                 QSize(100, 100), 
+                                 Qt.KeepAspectRatio,
+                                 Qt.SmoothTransformation
+                                 ))
+                        
         mime_data = QMimeData()
-        mime_data.setData('application/x-dnditemdata', item_data)
+        mime_data.setData('application/x-dnditemdata', QByteArray())
 
         drag = QDrag(self)
         drag.setMimeData(mime_data)
         drag.setPixmap(pixmap)
-        drag.setHotSpot(event.pos() - child.pos())
+        drag.setHotSpot(child.pos() + QPoint(10, -50))
 
         if drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction) == Qt.MoveAction:
             child.close()
         else:
             child.show()
             child.setPixmap(pixmap)
+            
+class Node(QGraphicsPixmapItem):
+    
+    def __init__(self, controller):
+        self.controller = controller
 
+        # we retrieve the pixmap based on the subtype to initialize a QGPI
+        self.pixmap = self.controller.gnode_pixmap
+        self.selection_pixmap = self.controller.selected_gnode_pixmap                                                
+        super().__init__(self.pixmap)
+        self.setFlag(QGraphicsItem.ItemSendsScenePositionChanges, True)
+        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.ItemIsMovable, True)
+        self.setOffset(
+                       QPointF(
+                               -self.boundingRect().width()/2, 
+                               -self.boundingRect().height()/2
+                               )
+                       )
+        self.setZValue(10)
+        self.controller.view.scene.addItem(self)
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+        
+    def itemChange(self, change, value):
+        if change == self.ItemSelectedHasChanged:
+            if self.isSelected():
+                self.setPixmap(self.selection_pixmap)
+            else:
+                self.setPixmap(self.pixmap)
+        return QGraphicsPixmapItem.itemChange(self, change, value)
+        
 if str.__eq__(__name__, '__main__'):
     import sys
     pyGISS = QApplication(sys.argv)
