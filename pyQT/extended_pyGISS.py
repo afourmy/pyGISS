@@ -1,5 +1,7 @@
+from collections import OrderedDict
 from inspect import stack
 from os.path import abspath, dirname, join, pardir
+from pyproj import Proj
 from PyQt5.QtCore import (
                           QByteArray,
                           QDataStream,
@@ -17,12 +19,14 @@ from PyQt5.QtGui import (
                          QDrag, 
                          QIcon,
                          QPainter, 
+                         QPen,
                          QPixmap,
                          QPolygonF
                          )
 from PyQt5.QtWidgets import (
                              QAction,
                              QApplication, 
+                             QComboBox,
                              QFrame,
                              QGraphicsEllipseItem,
                              QGraphicsItem,
@@ -34,20 +38,22 @@ from PyQt5.QtWidgets import (
                              QGroupBox,
                              QHBoxLayout,
                              QLabel,
+                             QLineEdit,
                              QMainWindow,
                              QPushButton, 
                              QWidget,  
                              )
-import pyproj
 import shapefile
 import shapely.geometry
 
 class View(QGraphicsView):
     
-    projections = {
-    'mercator': pyproj.Proj(init="epsg:3395"),
-    'spherical': pyproj.Proj('+proj=ortho +lon_0=28 +lat_0=47')
-    }
+    projections = OrderedDict([
+    ('Spherical', Proj('+proj=ortho +lat_0=48 +lon_0=17')),
+    ('Mercator', Proj(init='epsg:3395')),
+    ('WGS84', Proj(init='epsg:3857')),
+    ('ETRS89 - LAEA Europe', Proj("+init=EPSG:3035"))
+    ])
     
     def __init__(self, controller):
         super().__init__()
@@ -56,56 +62,20 @@ class View(QGraphicsView):
         self.setScene(self.scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setRenderHint(QPainter.Antialiasing)
-        self.proj = 'spherical'
+        self.proj = 'Spherical'
         self.ratio, self.offset = 1/1000, (0, 0)
+        self.display = True
         
         # brush for water and lands
-        water_brush = QBrush(QColor(64, 164, 223))
-        land_brush = QBrush(QColor(52, 165, 111))
+        self.water_brush = QBrush(QColor(64, 164, 223))
+        self.land_brush = QBrush(QColor(52, 165, 111))
+        self.land_pen = QPen(QColor(52, 165, 111))
+                
+        self.shapefile = 'C:/Users/minto/Desktop/pyGISS/shapefiles/World countries.shp'
         
-        # draw the planet
-        cx, cy = self.to_canvas_coordinates(28, 47)
-        R = 6371000*self.ratio
-        earth = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
-        earth.setZValue(0)
-        earth.setBrush(water_brush)
-        
-        self.path_to_shapefile = 'C:/Users/minto/Desktop/pyGISS/shapefiles/World countries.shp'
-        for polygon in self.create_polygon():
-            polygon.setBrush(land_brush)
-            polygon.setZValue(1)
-            self.scene.addItem(polygon)
-            
-        self.scene.addItem(earth)
-        
-    def to_geographical_coordinates(self, x, y):
-        px, py = (x - self.offset[0])/self.ratio, (self.offset[1] - y)/self.ratio
-        return self.projections[self.proj](px, py, inverse=True)
-        
-    def to_canvas_coordinates(self, longitude, latitude):
-        px, py = self.projections[self.proj](longitude, latitude)
-        return px*self.ratio + self.offset[0], -py*self.ratio + self.offset[1]
-
-    def create_polygon(self):
-        sf = shapefile.Reader(self.path_to_shapefile)       
-        polygons = sf.shapes() 
-        for polygon in polygons:
-            # convert shapefile geometries into shapely geometries
-            # to extract the polygons of a multipolygon
-            polygon = shapely.geometry.shape(polygon)
-            # if it is a polygon, we use a list to make it iterable
-            if polygon.geom_type == 'Polygon':
-                polygon = [polygon]
-            for land in polygon:
-                qt_polygon = QPolygonF() 
-                land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
-                coords = land.replace('(', '').replace(')', '').split(',')
-                for lon, lat in zip(coords[0::2], coords[1::2]):
-                    px, py = self.to_canvas_coordinates(lon, lat)
-                    if px > 1e+10:
-                        continue
-                    qt_polygon.append(QPointF(px, py))
-                yield QGraphicsPolygonItem(qt_polygon)
+        # draw the map 
+        self.polygons = self.scene.createItemGroup(self.draw_polygons())
+        self.draw_water()
 
     ## Zoom system
 
@@ -155,6 +125,77 @@ class View(QGraphicsView):
         geo_pos = self.to_geographical_coordinates(pos.x(), pos.y())
         if event.mimeData().hasFormat('application/x-dnditemdata'):
             new_node = Node(self.controller, pos)
+            
+    ## Map functions
+    
+    def to_geographical_coordinates(self, x, y):
+        px, py = (x - self.offset[0])/self.ratio, (self.offset[1] - y)/self.ratio
+        return self.projections[self.proj](px, py, inverse=True)
+        
+    def to_canvas_coordinates(self, longitude, latitude):
+        px, py = self.projections[self.proj](longitude, latitude)
+        return px*self.ratio + self.offset[0], -py*self.ratio + self.offset[1]
+
+    def draw_polygons(self):
+        sf = shapefile.Reader(self.shapefile)       
+        polygons = sf.shapes() 
+        for polygon in polygons:
+            # convert shapefile geometries into shapely geometries
+            # to extract the polygons of a multipolygon
+            polygon = shapely.geometry.shape(polygon)
+            # if it is a polygon, we use a list to make it iterable
+            if polygon.geom_type == 'Polygon':
+                polygon = [polygon]
+            for land in polygon:
+                qt_polygon = QPolygonF() 
+                land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
+                coords = land.replace('(', '').replace(')', '').split(',')
+                for lon, lat in zip(coords[0::2], coords[1::2]):
+                    px, py = self.to_canvas_coordinates(lon, lat)
+                    if px > 1e+10:
+                        continue
+                    qt_polygon.append(QPointF(px, py))
+                polygon_item = QGraphicsPolygonItem(qt_polygon)
+                polygon_item.setBrush(self.land_brush)
+                polygon_item.setPen(self.land_pen)
+                polygon_item.setZValue(1)
+                yield polygon_item
+                
+    def draw_water(self):
+        if self.proj in ('Spherical', 'ETRS89 - LAEA Europe'):
+            cx, cy = self.to_canvas_coordinates(17, 48)
+            # if the projection is ETRS89, we need the diameter and not the radius
+            R = 6371000*self.ratio*(1 if self.proj == 'Spherical' else 2)
+            earth_water = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
+            earth_water.setZValue(0)
+            earth_water.setBrush(self.water_brush)
+            self.polygons.addToGroup(earth_water)
+        else:
+            # we compute the projected bounds of the Mercator (3395) projection
+            # upper-left corner x and y coordinates:
+            ulc_x, ulc_y = self.to_canvas_coordinates(-180, 84)
+            # lower-right corner x and y coordinates
+            lrc_x, lrc_y = self.to_canvas_coordinates(180, -84.72)
+            # width and height of the map (required for the QRectItem)
+            width, height = lrc_x - ulc_x, lrc_y - ulc_y
+            earth_water = QGraphicsRectItem(ulc_x, ulc_y, width, height)
+            earth_water.setZValue(0)
+            earth_water.setBrush(self.water_brush)
+            self.polygons.addToGroup(earth_water)
+            
+    def show_hide_map(self):
+        self.display = not self.display
+        self.polygons.show() if self.display else self.polygons.hide()
+        
+    def delete_map(self):
+        self.view.scene.removeItem(self.polygons)
+            
+    def redraw_map(self):
+        self.delete_map()
+        self.polygons = self.view.scene.createItemGroup(self.draw_polygons())
+        self.draw_water()
+        # replace the nodes at their geographical location
+        self.view.move_to_geographical_coordinates()
 
 class Controller(QMainWindow):
     
@@ -189,10 +230,14 @@ class Controller(QMainWindow):
         selection_mode.setStatusTip('Switch to selection mode')
         selection_mode.triggered.connect(self.add_project)
         
+        # paths to the icons (standard node and selected node)
         path_node = join(path_icon, 'node.png')
         path_selected_node = join(path_icon, 'selected_node.png')
+        
+        # used as a label for the menu
         self.node_pixmap = QPixmap(path_node)
-        self.selected_node_pixmap = QPixmap(path_selected_node)
+        
+        # used on the canvas
         self.gnode_pixmap = QPixmap(path_node).scaled(
                                                     QSize(100, 100), 
                                                     Qt.KeepAspectRatio,
@@ -223,12 +268,47 @@ class MainMenu(QWidget):
         self.setAcceptDrops(True)
                 
         node_creation_groupbox = NodeCreation(self.controller)
-                
-        map_projection_groupbox = QGroupBox()
+        map_projection_groupbox = GISParametersMenu(self.controller)
         
         layout = QGridLayout(self)
         layout.addWidget(node_creation_groupbox)
         layout.addWidget(map_projection_groupbox)
+        
+class GISParametersMenu(QGroupBox):  
+
+    def __init__(self, controller):
+        super().__init__()
+        self.controller = controller
+        self.setWindowTitle('GIS parameters')
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        
+        layout = QGridLayout()
+        
+        # choose the projection and change it
+        choose_projection = QLabel('Type of projection')
+        self.projection_list = QComboBox(self)
+        self.projection_list.addItems(View.projections)
+        
+        # choose the map/nodes ratio
+        ratio = QLabel('Size of a node on the map')
+        self.ratio_edit = QLineEdit('100')
+        self.ratio_edit.setMaximumWidth(120)
+        
+        draw_map_button = QPushButton('Redraw map')
+        draw_map_button.clicked.connect(self.redraw_map)
+        
+        # position in the grid
+        layout.addWidget(choose_projection, 0, 0, 1, 1)
+        layout.addWidget(self.projection_list, 0, 1, 1, 1)
+        layout.addWidget(ratio, 1, 0, 1, 1)
+        layout.addWidget(self.ratio_edit, 1, 1, 1, 1)
+        layout.addWidget(draw_map_button, 2, 0, 1, 2)
+        self.setLayout(layout)
+        
+    def redraw_map(self, _):
+        self.controller.view.ratio = 1/float(self.ratio_edit.text())
+        self.controller.view.proj = self.projection_list.currentText()
+        self.controller.view.redraw_map()
         
 class NodeCreation(QGroupBox):
     
@@ -259,17 +339,15 @@ class NodeCreation(QGroupBox):
     dragEnterEvent = dragMoveEvent
 
     def mousePressEvent(self, event):
-
         child = self.childAt(event.pos())
-        
         if not child:
             return
         
         pixmap = QPixmap(child.pixmap().scaled(
-                                 QSize(100, 100), 
-                                 Qt.KeepAspectRatio,
-                                 Qt.SmoothTransformation
-                                 ))
+                                               QSize(100, 100), 
+                                               Qt.KeepAspectRatio,
+                                               Qt.SmoothTransformation
+                                               ))
                         
         mime_data = QMimeData()
         mime_data.setData('application/x-dnditemdata', QByteArray())
