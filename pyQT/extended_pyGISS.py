@@ -50,6 +50,100 @@ import shapefile
 import shapely.geometry
 import xlrd
 
+## Structure of this file
+# Controller: the main window
+# View: the canvas where the map is displayed
+# Node: the Python Software foundation icon that can be created in the view
+# MainMenu: the left-side menu. Contains 3 QGroupBox
+# - Node creation: create a node with the drag & drop system
+# - GISParametersMenu: change the projection and the size of nodes in the view
+# - Deletion: delete selected nodes, all nodes, or the map
+
+class Controller(QMainWindow):
+    
+    def __init__(self, path_app):
+        super().__init__()
+        self.path_shapefiles = join(path_app, pardir, 'shapefiles')
+        self.path_projects = join(path_app, pardir, 'projects')
+        path_icon = join(path_app, pardir, 'images')
+        self.setWindowIcon(QIcon(join(path_icon, 'globe.png')))
+        
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+        
+        ## Menu bar
+        menu_bar = self.menuBar()
+        
+        new_project = QAction('Add project', self)
+        new_project.setStatusTip('Create a new project')
+        new_project.triggered.connect(self.close)
+        
+        delete_project = QAction('Delete project', self)
+        delete_project.setStatusTip('Delete the current project')
+        delete_project.triggered.connect(self.close)
+        
+        import_shapefile_icon = QIcon(join(path_icon, 'globe.png'))
+        import_shapefile = QAction(import_shapefile_icon, 'Import a shapefile', self)
+        import_shapefile.setStatusTip('Import a shapefile')
+        import_shapefile.triggered.connect(self.import_shapefile)
+        
+        import_project_icon = QIcon(join(path_icon, 'import_project.png'))
+        import_project = QAction(import_project_icon, 'Import a Excel project', self)
+        import_project.setStatusTip('Import a project (Excel format)')
+        import_project.triggered.connect(self.import_project)
+        
+        toolbar = self.addToolBar('')
+        toolbar.resize(1500, 1500)
+        toolbar.setIconSize(QSize(70, 70))
+        toolbar.addAction(import_shapefile)
+        toolbar.addAction(import_project)
+        
+        # paths to the icons (standard node and selected node)
+        path_node = join(path_icon, 'node.png')
+        path_selected_node = join(path_icon, 'selected_node.png')
+        
+        # used as a label for the menu
+        self.node_pixmap = QPixmap(path_node)
+        
+        # used on the canvas
+        self.gnode_pixmap = QPixmap(path_node).scaled(
+                                                    QSize(100, 100), 
+                                                    Qt.KeepAspectRatio,
+                                                    Qt.SmoothTransformation
+                                                    )
+        self.selected_gnode_pixmap = QPixmap(path_selected_node).scaled(
+                                                    QSize(100, 100), 
+                                                    Qt.KeepAspectRatio,
+                                                    Qt.SmoothTransformation
+                                                    )
+        
+        self.view = View(self)
+        self.main_menu = MainMenu(self)
+        
+        layout = QHBoxLayout(central_widget)
+        layout.addWidget(self.main_menu) 
+        layout.addWidget(self.view)
+        
+    def import_project(self):
+        filepath = QFileDialog.getOpenFileName(
+                                            self, 
+                                            'Import project', 
+                                            self.path_projects
+                                            )[0]
+        book = xlrd.open_workbook(filepath)
+        sheet = book.sheet_by_index(0)
+        for row_index in range(1, sheet.nrows):
+            x, y = self.view.to_canvas_coordinates(*sheet.row_values(row_index))
+            Node(self, QPointF(x, y))
+        
+    def import_shapefile(self):
+        self.view.shapefile = QFileDialog.getOpenFileName(
+                                            self, 
+                                            'Import a shapefile', 
+                                            self.path_shapefiles
+                                            )[0]
+        self.view.redraw_map()
+
 class View(QGraphicsView):
     
     projections = OrderedDict([
@@ -209,92 +303,54 @@ class View(QGraphicsView):
         self.draw_water()
         # replace the nodes at their geographical location
         self.move_to_geographical_coordinates()
-
-class Controller(QMainWindow):
+        
+class Node(QGraphicsPixmapItem):
     
-    def __init__(self, path_app):
-        super().__init__()
-        self.path_shapefiles = join(path_app, pardir, 'shapefiles')
-        path_icon = join(path_app, pardir, 'images')
-        # set the icon
-        self.setWindowIcon(QIcon(join(path_icon, 'globe.png')))
+    def __init__(self, controller, position):
+        self.controller = controller
+        self.view = controller.view
+        self.view.nodes.add(self)
+        # we retrieve the pixmap based on the subtype to initialize a QGPI
+        self.pixmap = self.controller.gnode_pixmap
+        self.selection_pixmap = self.controller.selected_gnode_pixmap                                                
+        super().__init__(self.pixmap)
+        self.setFlag(QGraphicsItem.ItemSendsScenePositionChanges, True)
+        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
+        self.setFlag(QGraphicsItem.ItemIsMovable, True)
+        self.setOffset(
+                       QPointF(
+                               -self.boundingRect().width()/2, 
+                               -self.boundingRect().height()/2
+                               )
+                       )
+        self.setZValue(10)
+        self.view.scene.addItem(self)
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+        self.setPos(position)
         
-        # a QMainWindow needs a central widget for the layout
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
+    def itemChange(self, change, value):
+        if change == self.ItemSelectedHasChanged:
+            if self.isSelected():
+                self.setPixmap(self.selection_pixmap)
+            else:
+                self.setPixmap(self.pixmap)
+        if change == self.ItemPositionHasChanged:
+            x, y = self.pos().x(), self.pos().y()
+            lon, lat = self.view.to_geographical_coordinates(x, y)
+            lon, lat = round(lon, 4), round(lat, 4)
+            self.longitude, self.latitude = lon, lat
+            # when the node is created, the ItemPositionHasChanged is triggered:
+            # we create the label
+            if not hasattr(self, 'label'):
+                self.label = self.view.scene.addSimpleText('test')
+                self.label.setZValue(15)
+            self.label.setPos(self.pos() + QPoint(-70, 50))
+            self.label.setText('({}, {})'.format(lon, lat))
+        return QGraphicsPixmapItem.itemChange(self, change, value)
         
-        ## Menu bar
-        menu_bar = self.menuBar()
-        
-        new_project = QAction('Add project', self)
-        new_project.setStatusTip('Create a new project')
-        new_project.triggered.connect(self.close)
-        
-        delete_project = QAction('Delete project', self)
-        delete_project.setStatusTip('Delete the current project')
-        delete_project.triggered.connect(self.close)
-        
-        import_shapefile_icon = QIcon(join(path_icon, 'globe.png'))
-        import_shapefile = QAction(import_shapefile_icon, 'Import a shapefile', self)
-        import_shapefile.setStatusTip('Import a shapefile')
-        import_shapefile.triggered.connect(self.import_shapefile)
-        
-        import_project_icon = QIcon(join(path_icon, 'import_project.png'))
-        import_project = QAction(import_project_icon, 'Import a Excel project', self)
-        import_project.setStatusTip('Import a project (Excel format)')
-        import_project.triggered.connect(self.import_project)
-        
-        toolbar = self.addToolBar('')
-        toolbar.resize(1500, 1500)
-        toolbar.setIconSize(QSize(70, 70))
-        toolbar.addAction(import_shapefile)
-        toolbar.addAction(import_project)
-        
-        # paths to the icons (standard node and selected node)
-        path_node = join(path_icon, 'node.png')
-        path_selected_node = join(path_icon, 'selected_node.png')
-        
-        # used as a label for the menu
-        self.node_pixmap = QPixmap(path_node)
-        
-        # used on the canvas
-        self.gnode_pixmap = QPixmap(path_node).scaled(
-                                                    QSize(100, 100), 
-                                                    Qt.KeepAspectRatio,
-                                                    Qt.SmoothTransformation
-                                                    )
-        self.selected_gnode_pixmap = QPixmap(path_selected_node).scaled(
-                                                    QSize(100, 100), 
-                                                    Qt.KeepAspectRatio,
-                                                    Qt.SmoothTransformation
-                                                    )
-        
-        self.view = View(self)
-        self.main_menu = MainMenu(self)
-        
-        layout = QHBoxLayout(central_widget)
-        layout.addWidget(self.main_menu) 
-        layout.addWidget(self.view)
-        
-    def import_project(self):
-        filepath = QFileDialog.getOpenFileName(
-                                            self, 
-                                            'Import project', 
-                                            'Choose a project to import'
-                                            )[0]
-        book = xlrd.open_workbook(filepath)
-        sheet = book.sheet_by_index(0)
-        for row_index in range(1, sheet.nrows):
-            x, y = self.view.to_canvas_coordinates(*sheet.row_values(row_index))
-            Node(self, QPointF(x, y))
-        
-    def import_shapefile(self):
-        self.view.shapefile = QFileDialog.getOpenFileName(
-                                            self, 
-                                            'Import a shapefile', 
-                                            'Choose a shapefile to import'
-                                            )[0]
-        self.view.redraw_map()
+    def self_destruction(self):
+        self.view.scene.removeItem(self.label)
+        self.view.scene.removeItem(self)
         
 class MainMenu(QWidget):
     
@@ -306,7 +362,7 @@ class MainMenu(QWidget):
                 
         node_creation_groupbox = NodeCreation(self.controller)
         map_projection_groupbox = GISParametersMenu(self.controller)
-        node_deletion_groupbox = NodeDeletion(self.controller)
+        node_deletion_groupbox = Deletion(self.controller)
         
         layout = QGridLayout(self)
         layout.addWidget(node_creation_groupbox)
@@ -403,7 +459,7 @@ class GISParametersMenu(QGroupBox):
     def show_hide_map(self):
         self.view.show_hide_map()
         
-class NodeDeletion(QGroupBox):  
+class Deletion(QGroupBox):  
 
     def __init__(self, controller):
         super().__init__()
@@ -431,54 +487,6 @@ class NodeDeletion(QGroupBox):
             
     def delete_map(self):
         self.view.delete_map()
-            
-class Node(QGraphicsPixmapItem):
-    
-    def __init__(self, controller, position):
-        self.controller = controller
-        self.view = controller.view
-        self.view.nodes.add(self)
-        # we retrieve the pixmap based on the subtype to initialize a QGPI
-        self.pixmap = self.controller.gnode_pixmap
-        self.selection_pixmap = self.controller.selected_gnode_pixmap                                                
-        super().__init__(self.pixmap)
-        self.setFlag(QGraphicsItem.ItemSendsScenePositionChanges, True)
-        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
-        self.setFlag(QGraphicsItem.ItemIsMovable, True)
-        self.setOffset(
-                       QPointF(
-                               -self.boundingRect().width()/2, 
-                               -self.boundingRect().height()/2
-                               )
-                       )
-        self.setZValue(10)
-        self.view.scene.addItem(self)
-        self.setCursor(QCursor(Qt.PointingHandCursor))
-        self.setPos(position)
-        
-    def itemChange(self, change, value):
-        if change == self.ItemSelectedHasChanged:
-            if self.isSelected():
-                self.setPixmap(self.selection_pixmap)
-            else:
-                self.setPixmap(self.pixmap)
-        if change == self.ItemPositionHasChanged:
-            x, y = self.pos().x(), self.pos().y()
-            lon, lat = self.view.to_geographical_coordinates(x, y)
-            lon, lat = round(lon, 4), round(lat, 4)
-            self.longitude, self.latitude = lon, lat
-            # when the node is created, the ItemPositionHasChanged is triggered:
-            # we create the label
-            if not hasattr(self, 'label'):
-                self.label = self.view.scene.addSimpleText('test')
-                self.label.setZValue(15)
-            self.label.setPos(self.pos() + QPoint(-70, 50))
-            self.label.setText('({}, {})'.format(lon, lat))
-        return QGraphicsPixmapItem.itemChange(self, change, value)
-        
-    def self_destruction(self):
-        self.view.scene.removeItem(self.label)
-        self.view.scene.removeItem(self)
         
 if str.__eq__(__name__, '__main__'):
     import sys
