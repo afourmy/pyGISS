@@ -32,6 +32,7 @@ from PyQt5.QtWidgets import (
                              QGraphicsItem,
                              QGraphicsPixmapItem,
                              QGraphicsPolygonItem,
+                             QGraphicsRectItem,
                              QGraphicsScene,
                              QGraphicsView,
                              QGridLayout,
@@ -41,6 +42,7 @@ from PyQt5.QtWidgets import (
                              QLineEdit,
                              QMainWindow,
                              QPushButton, 
+                             QStyleFactory,
                              QWidget,  
                              )
 import shapefile
@@ -76,6 +78,9 @@ class View(QGraphicsView):
         # draw the map 
         self.polygons = self.scene.createItemGroup(self.draw_polygons())
         self.draw_water()
+        
+        # set of graphical nodes
+        self.nodes = set()
 
     ## Zoom system
 
@@ -135,6 +140,13 @@ class View(QGraphicsView):
     def to_canvas_coordinates(self, longitude, latitude):
         px, py = self.projections[self.proj](longitude, latitude)
         return px*self.ratio + self.offset[0], -py*self.ratio + self.offset[1]
+        
+    def move_to_geographical_coordinates(self):
+        for node in self.nodes:
+            node.setPos(QPointF(*self.to_canvas_coordinates(
+                                                            node.longitude, 
+                                                            node.latitude
+                                                            )))
 
     def draw_polygons(self):
         sf = shapefile.Reader(self.shapefile)       
@@ -188,14 +200,14 @@ class View(QGraphicsView):
         self.polygons.show() if self.display else self.polygons.hide()
         
     def delete_map(self):
-        self.view.scene.removeItem(self.polygons)
+        self.scene.removeItem(self.polygons)
             
     def redraw_map(self):
         self.delete_map()
-        self.polygons = self.view.scene.createItemGroup(self.draw_polygons())
+        self.polygons = self.scene.createItemGroup(self.draw_polygons())
         self.draw_water()
         # replace the nodes at their geographical location
-        self.view.move_to_geographical_coordinates()
+        self.move_to_geographical_coordinates()
 
 class Controller(QMainWindow):
     
@@ -269,46 +281,12 @@ class MainMenu(QWidget):
                 
         node_creation_groupbox = NodeCreation(self.controller)
         map_projection_groupbox = GISParametersMenu(self.controller)
+        node_deletion_groupbox = NodeDeletion(self.controller)
         
         layout = QGridLayout(self)
         layout.addWidget(node_creation_groupbox)
         layout.addWidget(map_projection_groupbox)
-        
-class GISParametersMenu(QGroupBox):  
-
-    def __init__(self, controller):
-        super().__init__()
-        self.controller = controller
-        self.setWindowTitle('GIS parameters')
-        self.setWindowFlags(Qt.WindowStaysOnTopHint)
-        
-        layout = QGridLayout()
-        
-        # choose the projection and change it
-        choose_projection = QLabel('Type of projection')
-        self.projection_list = QComboBox(self)
-        self.projection_list.addItems(View.projections)
-        
-        # choose the map/nodes ratio
-        ratio = QLabel('Size of a node on the map')
-        self.ratio_edit = QLineEdit('100')
-        self.ratio_edit.setMaximumWidth(120)
-        
-        draw_map_button = QPushButton('Redraw map')
-        draw_map_button.clicked.connect(self.redraw_map)
-        
-        # position in the grid
-        layout.addWidget(choose_projection, 0, 0, 1, 1)
-        layout.addWidget(self.projection_list, 0, 1, 1, 1)
-        layout.addWidget(ratio, 1, 0, 1, 1)
-        layout.addWidget(self.ratio_edit, 1, 1, 1, 1)
-        layout.addWidget(draw_map_button, 2, 0, 1, 2)
-        self.setLayout(layout)
-        
-    def redraw_map(self, _):
-        self.controller.view.ratio = 1/float(self.ratio_edit.text())
-        self.controller.view.proj = self.projection_list.currentText()
-        self.controller.view.redraw_map()
+        layout.addWidget(node_deletion_groupbox)
         
 class NodeCreation(QGroupBox):
     
@@ -355,20 +333,86 @@ class NodeCreation(QGroupBox):
         drag = QDrag(self)
         drag.setMimeData(mime_data)
         drag.setPixmap(pixmap)
-        drag.setHotSpot(child.pos() + QPoint(10, -50))
+        drag.setHotSpot(child.pos() + QPoint(10, 0))
 
         if drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction) == Qt.MoveAction:
             child.close()
         else:
             child.show()
             child.setPixmap(pixmap)
+        
+class GISParametersMenu(QGroupBox):  
+
+    def __init__(self, controller):
+        super().__init__()
+        self.view = controller.view
+        
+        # choose the projection and change it
+        choose_projection = QLabel('Projection')
+        self.projection_list = QComboBox(self)
+        self.projection_list.addItems(View.projections)
+        
+        # choose the map/nodes ratio
+        ratio = QLabel('Node size')
+        self.ratio_edit = QLineEdit('100')
+        self.ratio_edit.setMaximumWidth(120)
+        
+        draw_map_button = QPushButton('Redraw map')
+        draw_map_button.clicked.connect(self.redraw_map)
+        show_hide_map_button = QPushButton('Show / Hide map')
+        show_hide_map_button.clicked.connect(self.show_hide_map)
+        
+        layout = QGridLayout(self)
+        layout.addWidget(choose_projection, 0, 0)
+        layout.addWidget(self.projection_list, 0, 1)
+        layout.addWidget(ratio, 1, 0)
+        layout.addWidget(self.ratio_edit, 1, 1)
+        layout.addWidget(draw_map_button, 2, 0, 1, 2)
+        layout.addWidget(show_hide_map_button, 3, 0, 1, 2)
+        
+    def redraw_map(self, _):
+        self.view.ratio = 1/float(self.ratio_edit.text())
+        self.view.proj = self.projection_list.currentText()
+        self.view.redraw_map()
+        
+    def show_hide_map(self):
+        self.view.show_hide_map()
+        
+class NodeDeletion(QGroupBox):  
+
+    def __init__(self, controller):
+        super().__init__()
+        self.view = controller.view
+        
+        delete_selection_button = QPushButton('Delete selected nodes')
+        delete_selection_button.clicked.connect(self.delete_selection)
+        delete_all_nodes_button = QPushButton('Delete all nodes')
+        delete_all_nodes_button.clicked.connect(self.delete_all_nodes)
+        delete_map_button = QPushButton('Delete the map')
+        delete_map_button.clicked.connect(self.delete_map)
+        
+        layout = QGridLayout(self)
+        layout.addWidget(delete_selection_button, 0, 0)
+        layout.addWidget(delete_all_nodes_button, 1, 0)
+        layout.addWidget(delete_map_button, 2, 0)
+        
+    def delete_selection(self):
+        for node in self.view.scene.selectedItems():
+            node.self_destruction()
+        
+    def delete_all_nodes(self):
+        for node in self.view.nodes:
+            node.self_destruction()
+            
+    def delete_map(self):
+        self.view.delete_map()
             
 class Node(QGraphicsPixmapItem):
     
     def __init__(self, controller, position):
         self.controller = controller
         self.view = controller.view
-        
+        self.view.nodes.add(self)
         # we retrieve the pixmap based on the subtype to initialize a QGPI
         self.pixmap = self.controller.gnode_pixmap
         self.selection_pixmap = self.controller.selected_gnode_pixmap                                                
@@ -397,6 +441,7 @@ class Node(QGraphicsPixmapItem):
             x, y = self.pos().x(), self.pos().y()
             lon, lat = self.view.to_geographical_coordinates(x, y)
             lon, lat = round(lon, 4), round(lat, 4)
+            self.longitude, self.latitude = lon, lat
             # when the node is created, the ItemPositionHasChanged is triggered:
             # we create the label
             if not hasattr(self, 'label'):
@@ -406,9 +451,14 @@ class Node(QGraphicsPixmapItem):
             self.label.setText('({}, {})'.format(lon, lat))
         return QGraphicsPixmapItem.itemChange(self, change, value)
         
+    def self_destruction(self):
+        self.view.scene.removeItem(self.label)
+        self.view.scene.removeItem(self)
+        
 if str.__eq__(__name__, '__main__'):
     import sys
     pyGISS = QApplication(sys.argv)
+    pyGISS.setStyle(QStyleFactory.create('Fusion'))
     path_app = dirname(abspath(stack()[0][1]))
     controller = Controller(path_app)
     controller.setGeometry(100, 100, 1500, 900)
