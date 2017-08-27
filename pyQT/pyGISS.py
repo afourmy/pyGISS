@@ -1,9 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-import pyproj
-import shapefile
-import shapely.geometry
+import pyproj, shapefile, shapely.geometry, sys
 
 class View(QGraphicsView):
     
@@ -18,21 +16,12 @@ class View(QGraphicsView):
         self.setScene(self.scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setRenderHint(QPainter.Antialiasing)
-        self.proj = 'spherical'
-        self.ratio, self.offset = 1/1000, (0, 0)
-        
-        # brush for water and lands
-        self.water_brush = QBrush(QColor(64, 164, 223))
-        self.land_brush = QBrush(QColor(52, 165, 111))
+        self.ratio, self.offset, self.proj = 1/1000, (0, 0), 'spherical'
         
     def wheelEvent(self, event):
         factor = 1.25 if event.angleDelta().y() > 0 else 0.8
         self.scale(factor, factor)
-        
-    def mousePressEvent(self, event):
-        pos = self.mapToScene(event.pos())
-        print(*self.to_geographical_coordinates(pos.x(), pos.y()))
-        
+                
     def to_geographical_coordinates(self, x, y):
         px, py = (x - self.offset[0])/self.ratio, (self.offset[1] - y)/self.ratio
         return self.projections[self.proj](px, py, inverse=True)
@@ -45,10 +34,7 @@ class View(QGraphicsView):
         sf = shapefile.Reader(self.shapefile)       
         polygons = sf.shapes() 
         for polygon in polygons:
-            # convert shapefile geometries into shapely geometries
-            # to extract the polygons of a multipolygon
             polygon = shapely.geometry.shape(polygon)
-            # if it is a polygon, we use a list to make it iterable
             if polygon.geom_type == 'Polygon':
                 polygon = [polygon]
             for land in polygon:
@@ -61,7 +47,7 @@ class View(QGraphicsView):
                         continue
                     qt_polygon.append(QPointF(px, py))
                 polygon_item = QGraphicsPolygonItem(qt_polygon)
-                polygon_item.setBrush(self.land_brush)
+                polygon_item.setBrush(QBrush(QColor(52, 165, 111)))
                 polygon_item.setZValue(1)
                 yield polygon_item
                 
@@ -70,17 +56,9 @@ class View(QGraphicsView):
             cx, cy = self.to_canvas_coordinates(28, 47)
             R = 6371000*self.ratio
             earth_water = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
-            earth_water.setZValue(0)
-            earth_water.setBrush(self.water_brush)
-            self.polygons.addToGroup(earth_water)
-        else:
-            ulc_x, ulc_y = self.to_canvas_coordinates(-180, 84)
-            lrc_x, lrc_y = self.to_canvas_coordinates(180, -84.72)
-            width, height = lrc_x - ulc_x, lrc_y - ulc_y
-            earth_water = QGraphicsRectItem(ulc_x, ulc_y, width, height)
-            earth_water.setZValue(0)
-            earth_water.setBrush(self.water_brush)
-            self.polygons.addToGroup(earth_water)
+        earth_water.setZValue(0)
+        earth_water.setBrush(QBrush(QColor(64, 164, 223)))
+        self.polygons.addToGroup(earth_water)
             
     def redraw_map(self):
         if hasattr(self, 'polygons'):
@@ -102,7 +80,7 @@ class PyQTGISS(QMainWindow):
         menu_bar.addAction(switch_projection)
         self.view = View(self)
         layout = QGridLayout(central_widget)
-        layout.addWidget(self.view, 0, 0, 1, 1)
+        layout.addWidget(self.view, 0, 0)
                 
     def import_shapefile(self):
         self.view.shapefile = QFileDialog.getOpenFileName(self, 'Import')[0]
@@ -113,7 +91,6 @@ class PyQTGISS(QMainWindow):
         self.view.redraw_map()
 
 if str.__eq__(__name__, '__main__'):
-    import sys
     app = QApplication(sys.argv)
     window = PyQTGISS()
     window.setWindowTitle('pyGISS: a lightweight GIS software')
