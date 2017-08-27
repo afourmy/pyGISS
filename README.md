@@ -1,8 +1,8 @@
 # Introduction
 
 A Geographic Information System (GIS) software is a software designed to import, analyze and visualize geographic data.
-PyGISS is a lightweight GIS software based on the standard Python library for GUI programming: tkinter.
-It allows users to create maps by importing shapefiles (.shp files), a format that describes maps as a set of polygons.
+PyGISS is a lightweight GIS software implemented both in tkinter (the standard Python library for GUI programming) and pyQT.
+It allows users to create maps by importing shapefiles, a format that describes maps as a set of polygons.
 
 ![extended pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/extended_pyGISS.PNG)
 
@@ -73,3 +73,21 @@ The golf version implements the core feature of PyGISS (import of shapefiles) in
 Upon running golf_GISS.py, a window pops up for the user to choose a shapefile.
 The shapefile is then imported and drawn on the canvas. 
 The mouse wheel allows the user to move on the map by zooming in and zooming out.
+
+# Contact
+
+You can contact me at my personal email address:
+```
+''.join(map(chr, (97, 110, 116, 111, 105, 110, 101, 46, 102, 111, 
+117, 114, 109, 121, 64, 103, 109, 97, 105, 108, 46, 99, 111, 109)))
+```
+
+or on the [Network to Code slack](http://networktocode.herokuapp.com "Network to Code slack"). (@minto)
+
+# Credits
+
+[pyshp](https://github.com/GeospatialPython/pyshp): A library to read and write ESRI Shapefiles.
+
+[shapely](https://github.com/Toblerity/Shapely): A library for the manipulation and analysis of geometric objects in the Cartesian plane.
+
+[pyproj](https://github.com/jswhit/pyproj): Python interface to PROJ4 library for cartographic transformations
