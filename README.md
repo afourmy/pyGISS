@@ -76,20 +76,60 @@ The mouse wheel allows the user to move on the map by zooming in and zooming out
 
 # How it works
 
+A point on the earth is defined as a longitude and a latitude.
+Longitude and latitude are angles.
+
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_0.png)
+
+We need to convert a point on a sphere (3D) into a point on a map (2D). This is called a "projection".
+According to the [remarkable theorem](https://en.wikipedia.org/wiki/Theorema_Egregium), a projection always causes a distortion (distances, shapes, areas, and/or directions are not preserved).
+For example, the  Mercator projection  preserves angles  but fails to preserve area.
 
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_1.png)
 
+To convert geographic coordinates (longitude and latitude) into projected coordinates (planar coordinates), we use a library called pyproj.
+
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_2.png)
+
+The first thing that we need to create a GIS software is a GUI programming framework.
+There are many such frameworks in Python: PyQT, pyside, wx_python, pyGTK.
+pyGISS is implemented using two different frameworks: tkinter and pyQT.
+
+Once we've chosen a framework, we need a widget that supports the drawing of 2D graphical items. In tkinter, this widget is called a Canvas; in pyQT, it is a QGraphicsView.
+
+These widgets have functions to create rectangles, circles, and most importantly, polygons.
+Indeed, as demonstrated below with Italy, a map can be represented as a set of polygons.
 
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_3.png)
 
+To draw the polygons, we need to have their coordinates.
+A shapefile (.shp) is a file that describes a map as a set of shapes. For a map, there are two types of shapes: polygons and multipolygons.
+Polygons and multipolygons are defined as a set of points on the Earth, each point being defined as a longitude and a latitude.
+
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_4.png)
+
+To read the shapefile and extract the shapes it contains, we will use the pyshp library.
+Once this is done, we have a set of shapes, polygons and mutipolygons.
 
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_5.png)
 
+We can draw polygons with the GUI framework polygon function. A multipolygon is actually composed of multiple polygons.
+To draw a multipolygon, we will decompose a multipolygon into the polygons it is made of with the shapely library.
+Shapely makes multipolygons iterable by implementing the __iter__ function: we can loop over a multipolygon with a simple 'for' loop, to retrieve its polygons.
+
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_6.png)
 
+The resulting algorithm is:
+
+``` 
+- Use pyshp to read the shapefile
+- Extract the shapes of the shapefile
+- When a shape is a multipolygon, decompose it into multiple polygons
+- Use pyproj to convert the shape's geographic coordinates into projected coordinates
+- Use the GUI framework method to draw the polygons
+``` 
+
+Below is the python code for this algorithm:
 
 ```
 def draw_polygons(self):
