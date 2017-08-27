@@ -74,6 +74,49 @@ Upon running golf_GISS.py, a window pops up for the user to choose a shapefile.
 The shapefile is then imported and drawn on the canvas. 
 The mouse wheel allows the user to move on the map by zooming in and zooming out.
 
+# How it works
+
+![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/how_it_works_0.png)
+
+
+```
+def draw_polygons(self):
+    # create a Proj projection: we will use it later the convert longitudes and 
+    # latitudes into projected coordinates
+    pyproj_projection = pyproj.Proj(init="epsg:3395")
+    # use the pyshp library to open the shapefile
+    shapefile = shapefile.Reader(self.shapefile)
+    # extract all the shapes it contains
+    polygons = shapefile.shapes() 
+    for polygon in polygons:
+        # convert shapefile geometries into shapely geometries
+        # to extract the polygons contained in multipolygons
+        polygon = shapely.geometry.shape(polygon)
+        # if it is a polygon, we use a list to make it iterable
+        if polygon.geom_type == 'Polygon':
+            polygon = [polygon]
+        for land in polygon:
+            qt_polygon = QPolygonF() 
+            # parse the coordinates
+            land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
+            coords = land.replace('(', '').replace(')', '').split(',')
+            for lon, lat in zip(coords[0::2], coords[1::2]):
+                # use the pyproj projection to convert geographic coordinates
+                # into projected coordinates
+                px, py = pyproj_projection(lon, lat)
+                # if it's out of the map (for example for an azimuthal 
+                # orthographic projection), do not process it
+                if px > 1e+10:
+                    continue
+                qt_polygon.append(QPointF(px, py))
+            # create the pyQT graphical item
+            polygon_item = QGraphicsPolygonItem(qt_polygon)
+            polygon_item.setBrush(self.land_brush)
+            polygon_item.setZValue(1)
+            # and return it
+            yield polygon_item
+```
+
 # Contact
 
 You can contact me at my personal email address:
