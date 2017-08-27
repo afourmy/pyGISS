@@ -2,7 +2,7 @@
 
 A Geographic Information System (GIS) software is a software designed to import, analyze and visualize geographic data.
 PyGISS is a lightweight GIS software implemented both in tkinter and pyQT.
-It allows users to create maps by importing shapefiles, a format that describes maps as a set of polygons.
+Users can display maps using any type of projection and create objects either by importing an Excel file containing GPS coordinates, or with a Drag & Drop system.
 
 ![pyGISS demo](https://github.com/afourmy/PyGISS/blob/master/readme/pyGISS.gif)
 
@@ -22,7 +22,9 @@ pip install shapely
 pip install pyproj
 ```
 
-The extended PyGISS version also uses ImageTk from Pillow:
+For the QT version of pyGISS, pyQT5 is required: it can be download from the [Riverband website](https://www.riverbankcomputing.com/software/pyqt/download5)
+
+For the tkinter version of the extended PyGISS, Pillow (ImageTk) is required: it can be installed directly via pip.
 
 ```
 sudo apt-get install python3-tk (unix)
@@ -43,36 +45,23 @@ It contains:
 * a menu 'Switch projection' to switch between the mercator and azimuthal orthographic projection.
 
 The following bindings are implemented:
-* the right-click button allows the user to move the display in any direction
 * the scroll wheel can be used for zooming in and out.
 * pressing the left-click button on the map will print the associated geographical coordinates (longitude, latitude).
 
-A few shapefiles are available for testing in the 'PyGISS/shapefiles' folder (world countries, continents, France, US).
+A few shapefiles are available for testing in the 'PyGISS/shapefiles' folder (world countries, continents, US).
 
 ## Extended version (extended_pyGISS.py, < 500 lines)
 
 ![extended pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/extended_pyGISS.png)
 
-The extended version shows how to use PyGISS to create a full-on GIS software.
-Besides the import of shapefiles, nodes can be created with a "Drag & Drop" system, moved on the map, and deleted.
+In the extended version, besides the import of shapefiles, nodes can be created with a "Drag & Drop" system, moved on the map, resized, and deleted.
 They can also be imported by creating an Excel file that contains the longitude and latitude of the nodes. (an example is available in the 'PyGISS/import' folder).
-
-To create a node, press the left-click button on the Python Software Foundation icon in the menu, and hold it down until you've reached the desired location on the canvas.
-Pressing the left-click button on the canvas allows the user to either select one or several nodes, or move all selected nodes.
-The right-click button and the scroll wheel work like in PyGISS standard version.
-
-The menu on the left allows the user to import a shapefile and draw the associated map ("Import map"), erase the map or a selection of nodes, and switch between the mercator and azimuthal orthographic projections. 
-
-For each node on the canvas, the geographical coordinates (longitude and latitude) are displayed under the node, and the position is updated in real-time upon moving the node.
 
 ## Golf version (golf_pyGISS.py, 5 lines)
 
 ![pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/golf_pyGISS.PNG)
 
-The golf version implements the core feature of PyGISS (import of shapefiles) in 5 lines of code. 
-Upon running golf_GISS.py, a window pops up for the user to choose a shapefile.
-The shapefile is then imported and drawn on the canvas. 
-The mouse wheel allows the user to move on the map by zooming in and zooming out.
+The golf version implements the core feature of PyGISS (import and drawing of shapefiles + zoom system) in 5 lines of code. 
 
 # How it works
 

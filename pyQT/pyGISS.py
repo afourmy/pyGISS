@@ -21,6 +21,10 @@ class View(QGraphicsView):
     def wheelEvent(self, event):
         factor = 1.25 if event.angleDelta().y() > 0 else 0.8
         self.scale(factor, factor)
+        
+    def mousePressEvent(self, event):
+        pos = self.mapToScene(event.pos())
+        print(*self.to_geographical_coordinates(pos.x(), pos.y()))
                 
     def to_geographical_coordinates(self, x, y):
         px, py = (x - self.offset[0])/self.ratio, (self.offset[1] - y)/self.ratio
@@ -56,9 +60,9 @@ class View(QGraphicsView):
             cx, cy = self.to_canvas_coordinates(28, 47)
             R = 6371000*self.ratio
             earth_water = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
-        earth_water.setZValue(0)
-        earth_water.setBrush(QBrush(QColor(64, 164, 223)))
-        self.polygons.addToGroup(earth_water)
+            earth_water.setZValue(0)
+            earth_water.setBrush(QBrush(QColor(64, 164, 223)))
+            self.polygons.addToGroup(earth_water)
             
     def redraw_map(self):
         if hasattr(self, 'polygons'):
