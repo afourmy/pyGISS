@@ -116,6 +116,7 @@ if str.__eq__(__name__, '__main__'):
     import sys
     app = QApplication(sys.argv)
     window = PyQTGISS()
+    window.setWindowTitle('pyGISS: a lightweight GIS software')
     window.setGeometry(100, 100, 1500, 900)
     window.show()
     sys.exit(app.exec_())

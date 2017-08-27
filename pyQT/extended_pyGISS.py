@@ -149,10 +149,10 @@ class View(QGraphicsView):
         self.setScene(self.scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setRenderHint(QPainter.Antialiasing)
-        self.proj = 'Spherical'
+        self.proj = 'Mercator'
         self.ratio, self.offset = 1/400, (0, 0)
         self.display = True
-        self.shapefile = join(controller.path_shapefiles, 'World countries.shp')
+        self.shapefile = join(controller.path_shapefiles, 'World countries_1.shp')
         
         # brush for water and lands
         self.water_brush = QBrush(QColor(64, 164, 223))
@@ -346,7 +346,7 @@ class MainMenu(QWidget):
     def __init__(self, controller):
         super().__init__(controller)
         self.controller = controller
-        self.setMinimumSize(300, 300)
+        self.setFixedSize(350, 800)
         self.setAcceptDrops(True)
                 
         node_creation_groupbox = NodeCreation(self.controller)

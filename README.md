@@ -1,10 +1,10 @@
 # Introduction
 
 A Geographic Information System (GIS) software is a software designed to import, analyze and visualize geographic data.
-PyGISS is a lightweight GIS software implemented both in tkinter (the standard Python library for GUI programming) and pyQT.
+PyGISS is a lightweight GIS software implemented both in tkinter and pyQT.
 It allows users to create maps by importing shapefiles, a format that describes maps as a set of polygons.
 
-![extended pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/extended_pyGISS.PNG)
+![pyGISS demo](https://github.com/afourmy/PyGISS/blob/master/readme/pyGISS.gif)
 
 # PyGISS dependencies
 
@@ -34,7 +34,7 @@ pip install pillow (windows & unix)
 
 ## Standard version (pyGISS.py, < 100 lines)
 
-![pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/pyGISS.PNG)
+![pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/pyGISS.png)
 
 The standard version implements PyGISS in less than 100 lines of code.
 
@@ -51,7 +51,7 @@ A few shapefiles are available for testing in the 'PyGISS/shapefiles' folder (wo
 
 ## Extended version (extended_pyGISS.py, < 500 lines)
 
-![extended pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/extended_pyGISS.PNG)
+![extended pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/extended_pyGISS.png)
 
 The extended version shows how to use PyGISS to create a full-on GIS software.
 Besides the import of shapefiles, nodes can be created with a "Drag & Drop" system, moved on the map, and deleted.
