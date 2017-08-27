@@ -71,17 +71,6 @@ class Controller(QMainWindow):
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         
-        ## Menu bar
-        menu_bar = self.menuBar()
-        
-        new_project = QAction('Add project', self)
-        new_project.setStatusTip('Create a new project')
-        new_project.triggered.connect(self.close)
-        
-        delete_project = QAction('Delete project', self)
-        delete_project.setStatusTip('Delete the current project')
-        delete_project.triggered.connect(self.close)
-        
         import_shapefile_icon = QIcon(join(path_icon, 'globe.png'))
         import_shapefile = QAction(import_shapefile_icon, 'Import a shapefile', self)
         import_shapefile.setStatusTip('Import a shapefile')

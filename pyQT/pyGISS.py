@@ -22,23 +22,16 @@ class View(QGraphicsView):
         self.ratio, self.offset = 1/1000, (0, 0)
         
         # brush for water and lands
-        water_brush = QBrush(QColor(64, 164, 223))
-        land_brush = QBrush(QColor(52, 165, 111))
+        self.water_brush = QBrush(QColor(64, 164, 223))
+        self.land_brush = QBrush(QColor(52, 165, 111))
         
-        # draw the planet
-        cx, cy = self.to_canvas_coordinates(28, 47)
-        R = 6371000*self.ratio
-        earth = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
-        earth.setZValue(0)
-        earth.setBrush(water_brush)
+    def wheelEvent(self, event):
+        factor = 1.25 if event.angleDelta().y() > 0 else 0.8
+        self.scale(factor, factor)
         
-        self.path_to_shapefile = 'C:/Users/minto/Desktop/pyGISS/shapefiles/World countries.shp'
-        for polygon in self.create_polygon():
-            polygon.setBrush(land_brush)
-            polygon.setZValue(1)
-            self.scene.addItem(polygon)
-            
-        self.scene.addItem(earth)
+    def mousePressEvent(self, event):
+        pos = self.mapToScene(event.pos())
+        print(*self.to_geographical_coordinates(pos.x(), pos.y()))
         
     def to_geographical_coordinates(self, x, y):
         px, py = (x - self.offset[0])/self.ratio, (self.offset[1] - y)/self.ratio
@@ -48,8 +41,8 @@ class View(QGraphicsView):
         px, py = self.projections[self.proj](longitude, latitude)
         return px*self.ratio + self.offset[0], -py*self.ratio + self.offset[1]
 
-    def create_polygon(self):
-        sf = shapefile.Reader(self.path_to_shapefile)       
+    def draw_polygons(self):
+        sf = shapefile.Reader(self.shapefile)       
         polygons = sf.shapes() 
         for polygon in polygons:
             # convert shapefile geometries into shapely geometries
@@ -67,22 +60,57 @@ class View(QGraphicsView):
                     if px > 1e+10:
                         continue
                     qt_polygon.append(QPointF(px, py))
-                yield QGraphicsPolygonItem(qt_polygon)
+                polygon_item = QGraphicsPolygonItem(qt_polygon)
+                polygon_item.setBrush(self.land_brush)
+                polygon_item.setZValue(1)
+                yield polygon_item
+                
+    def draw_water(self):
+        if self.proj in ('spherical'):
+            cx, cy = self.to_canvas_coordinates(28, 47)
+            R = 6371000*self.ratio
+            earth_water = QGraphicsEllipseItem(cx - R, cy - R, 2*R, 2*R)
+            earth_water.setZValue(0)
+            earth_water.setBrush(self.water_brush)
+            self.polygons.addToGroup(earth_water)
+        else:
+            ulc_x, ulc_y = self.to_canvas_coordinates(-180, 84)
+            lrc_x, lrc_y = self.to_canvas_coordinates(180, -84.72)
+            width, height = lrc_x - ulc_x, lrc_y - ulc_y
+            earth_water = QGraphicsRectItem(ulc_x, ulc_y, width, height)
+            earth_water.setZValue(0)
+            earth_water.setBrush(self.water_brush)
+            self.polygons.addToGroup(earth_water)
+            
+    def redraw_map(self):
+        if hasattr(self, 'polygons'):
+            self.scene.removeItem(self.polygons)
+        self.polygons = self.scene.createItemGroup(self.draw_polygons())
+        self.draw_water()
 
-    def wheelEvent(self, event):
-        factor = 1.25 if event.angleDelta().y() > 0 else 0.8
-        self.scale(factor, factor)
-        
-    def mousePressEvent(self, event):
-        pos = self.mapToScene(event.pos())
-        print(*self.to_geographical_coordinates(pos.x(), pos.y()))
-
-class PyQTGISS(QWidget):
+class PyQTGISS(QMainWindow):
     def __init__(self):
         super().__init__()
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+        menu_bar = self.menuBar()
+        import_shapefile = QAction('Import shapefile', self)
+        import_shapefile.triggered.connect(self.import_shapefile)
+        switch_projection = QAction('Switch projection', self)
+        switch_projection.triggered.connect(self.switch_projection)
+        menu_bar.addAction(import_shapefile)
+        menu_bar.addAction(switch_projection)
         self.view = View(self)
-        layout = QGridLayout(self)
+        layout = QGridLayout(central_widget)
         layout.addWidget(self.view, 0, 0, 1, 1)
+                
+    def import_shapefile(self):
+        self.view.shapefile = QFileDialog.getOpenFileName(self, 'Import')[0]
+        self.view.redraw_map()
+        
+    def switch_projection(self):
+        self.view.proj = 'mercator' if self.view.proj == 'spherical' else 'spherical'
+        self.view.redraw_map()
 
 if str.__eq__(__name__, '__main__'):
     import sys
