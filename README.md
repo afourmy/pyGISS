@@ -59,7 +59,7 @@ They can also be imported by creating an Excel file that contains the longitude 
 
 ## Golf version (golf_pyGISS.py, 5 lines)
 
-![pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/golf_pyGISS.PNG)
+![pyGISS](https://github.com/afourmy/PyGISS/blob/master/images/golf_pyGISS.png)
 
 The golf version implements the core feature of PyGISS (import and drawing of shapefiles + zoom system) in 5 lines of code. 
 
