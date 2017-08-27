@@ -131,7 +131,7 @@ The resulting algorithm is:
 
 Below is the python code for this algorithm:
 
-```
+```python
 def draw_polygons(self):
     # create a Proj projection: we will use it later the convert longitudes and 
     # latitudes into projected coordinates
