@@ -149,7 +149,7 @@ class View(QGraphicsView):
         self.setScene(self.scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setRenderHint(QPainter.Antialiasing)
-        self.proj = 'Mercator'
+        self.proj = 'Spherical'
         self.ratio, self.offset = 1/400, (0, 0)
         self.display = True
         self.shapefile = join(controller.path_shapefiles, 'World countries_1.shp')
