@@ -43,9 +43,8 @@ class View(QGraphicsView):
                 polygon = [polygon]
             for land in polygon:
                 qt_polygon = QPolygonF() 
-                land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
-                coords = land.replace('(', '').replace(')', '').split(',')
-                for lon, lat in zip(coords[0::2], coords[1::2]):
+                longitudes, latitudes = land.exterior.coords.xy
+                for lon, lat in zip(longitudes, latitudes):
                     px, py = self.to_canvas_coordinates(lon, lat)
                     if px > 1e+10:
                         continue

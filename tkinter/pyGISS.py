@@ -51,10 +51,9 @@ class Map(tk.Canvas):
             if polygon.geom_type == 'Polygon':
                 polygon = [polygon]
             for land in polygon:
-                land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
-                coords = land.replace('(', '').replace(')', '').split(',')
+                longitudes, latitudes = land.exterior.coords.xy
                 self.create_polygon(sum((self.to_canvas_coordinates(*c) 
-                                for c in zip(coords[0::2], coords[1::2])), ()),    
+                                for c in zip(longitudes, latitudes)), ()),    
                                 fill='green3', outline='black', tags=('land',))
 
     def draw_water(self):

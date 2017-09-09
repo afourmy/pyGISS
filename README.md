@@ -143,14 +143,10 @@ def draw_polygons(self):
             polygon = [polygon]
             
         for land in polygon:
-            qt_polygon = QPolygonF() 
-            
-            # parse the coordinates
-            land = str(land)[10:-2].replace(', ', ',').replace(' ', ',')
-            coords = land.replace('(', '').replace(')', '').split(',')
-            
-            for lon, lat in zip(coords[0::2], coords[1::2]):
-                
+            qt_polygon = QPolygonF()
+		 longitudes, latitudes = land.exterior.coords.xy
+            for lon, lat in zip(longitudes, latitudes):  
+              
                 # use the pyproj projection to convert geographic coordinates
                 # into projected coordinates
                 px, py = pyproj_projection(lon, lat)
