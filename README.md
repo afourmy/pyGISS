@@ -144,9 +144,9 @@ def draw_polygons(self):
             
         for land in polygon:
             qt_polygon = QPolygonF()
-		 longitudes, latitudes = land.exterior.coords.xy
+            longitudes, latitudes = land.exterior.coords.xy
+            
             for lon, lat in zip(longitudes, latitudes):  
-              
                 # use the pyproj projection to convert geographic coordinates
                 # into projected coordinates
                 px, py = pyproj_projection(lon, lat)
