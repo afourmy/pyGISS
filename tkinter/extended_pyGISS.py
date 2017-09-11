@@ -219,7 +219,7 @@ class Map(tk.Canvas):
             for land in polygon:
                 self.create_polygon(
                                     sum((self.to_canvas_coordinates(*c) 
-                                    for c in zip(*land.exterior.coords.xy)), ()),    
+                                    for c in land.exterior.coords), ()),    
                                     fill = 'green3', 
                                     outline = 'black', 
                                     tags = ('land',)
