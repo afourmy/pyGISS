@@ -6,32 +6,6 @@ Users can display maps using any type of projection and create objects either by
 
 ![pyGISS demo](https://github.com/afourmy/PyGISS/blob/master/readme/pyGISS.gif)
 
-# PyGISS dependencies
-
-PyGIS relies on three Python libraries:
-
-* pyshp, used for reading shapefiles.
-* shapely, used for converting a multipolygon into a set of polygons
-* pyproj, used for translating geographic coordinates (longitude and latitude) into projected coordinates
-
-Before using PyGISS, you must make sure all these libraries are properly installed:
-
-```
-pip install pyshp
-pip install shapely
-pip install pyproj
-```
-
-For the Qt version of pyGISS, pyQt5 is required: it can be download from the [Riverband website](https://www.riverbankcomputing.com/software/pyqt/download5)
-
-For the tkinter version of the extended PyGISS, Pillow (ImageTk) is required: it can be installed directly via pip.
-
-```
-sudo apt-get install python3-tk (unix)
-sudo apt-get install python3-pil.imagetk (unix)
-pip install pillow (windows & unix)
-```
-
 # PyGISS versions
 
 ## Standard version (pyGISS.py, < 100 lines)
@@ -55,7 +29,7 @@ A few shapefiles are available for testing in the 'PyGISS/shapefiles' folder (wo
 ![extended pyGISS](https://github.com/afourmy/PyGISS/blob/master/readme/extended_pyGISS.png)
 
 In the extended version, besides the import of shapefiles, nodes can be created with a "Drag & Drop" system, moved on the map, resized, and deleted.
-They can also be imported by creating an Excel file that contains the longitude and latitude of the nodes. (an example is available in the 'PyGISS/import' folder).
+They can also be imported by creating an Excel file that contains the longitude and latitude of the nodes. (an example is available in the 'PyGISS/projects' folder).
 
 ## Golf version (golf_pyGISS.py, 5 lines)
 
@@ -168,6 +142,32 @@ You can contact me at my personal email address:
 ```
 
 or on the [Network to Code slack](http://networktocode.herokuapp.com "Network to Code slack"). (@minto)
+
+# PyGISS dependencies
+
+PyGIS relies on three Python libraries:
+
+* pyshp, used for reading shapefiles.
+* shapely, used for converting a multipolygon into a set of polygons
+* pyproj, used for translating geographic coordinates (longitude and latitude) into projected coordinates
+
+Before using PyGISS, you must make sure all these libraries are properly installed:
+
+```
+pip install pyshp
+pip install shapely
+pip install pyproj
+```
+
+For the Qt version of pyGISS, pyQt5 is required: it can be download from the [Riverband website](https://www.riverbankcomputing.com/software/pyqt/download5)
+
+For the tkinter version of the extended PyGISS, Pillow (ImageTk) is required: it can be installed directly via pip.
+
+```
+sudo apt-get install python3-tk (unix)
+sudo apt-get install python3-pil.imagetk (unix)
+pip install pillow (windows & unix)
+```
 
 # Credits
 
