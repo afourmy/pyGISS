@@ -245,6 +245,7 @@ class View(QGraphicsView):
             for land in polygon:
                 qt_polygon = QPolygonF() 
                 for lon, lat in land.exterior.coords:
+                    print(lon, lat)
                     px, py = self.to_canvas_coordinates(lon, lat)
                     if px > 1e+10:
                         continue
