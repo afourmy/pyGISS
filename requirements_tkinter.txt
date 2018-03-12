@@ -1,0 +1,5 @@
+pyshp
+shapely
+pyproj
+pillow
+xlrd
