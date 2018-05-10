@@ -18,7 +18,7 @@ try:
     import xlrd
 except ImportError:
     warnings.warn('Excel libraries missing: excel import/export disabled')
-    
+
 # prevent python from writing *.pyc files / __pycache__ folders
 sys.dont_write_bytecode = True
 
@@ -26,30 +26,21 @@ path_app = dirname(abspath(stack()[0][1]))
 
 if path_app not in sys.path:
     sys.path.append(path_app)
-    
+
 class Controller(tk.Tk):
-        
+
     def __init__(self, path_app):
         super().__init__()
         self.title('Extended PyGISS')
         path_icon = abspath(join(path_app, pardir, 'images'))
         
         # generate the PSF tk images
-        img_psf = ImageTk.Image.open(join(
-                                          path_icon, 
-                                          'node.png'
-                                          )
-                                    )
-                                    
-        selected_img_psf = ImageTk.Image.open(join(
-                                          path_icon, 
-                                          'selected_node.png'
-                                          )
-                                    )
+        img_psf = ImageTk.Image.open(join(path_icon, 'node.png'))
+        selected_img_psf = ImageTk.Image.open(join(path_icon, 'selected_node.png'))
         self.psf_button_image = ImageTk.PhotoImage(img_psf.resize((100, 100)))
         self.node_image = ImageTk.PhotoImage(img_psf.resize((40, 40)))
         self.selected_node_image = ImageTk.PhotoImage(selected_img_psf.resize((40, 40)))
-        
+
         for widget in (
                        'Button',
                        'Label', 
@@ -57,107 +48,125 @@ class Controller(tk.Tk):
                        'Labelframe.Label', 
                        ):
             ttk.Style().configure('T' + widget, background='#A1DBCD')
-            
+
         self.map = Map(self)
         self.map.pack(side='right', fill='both', expand=1)
-        
+
         self.menu = Menu(self)
         self.menu.pack(side='right', fill='both', expand=1)
-        
+
         menu = tk.Menu(self)
         menu.add_command(label="Import shapefile", command=self.map.import_map)
         self.config(menu=menu)
-        
+
         # if motion is called, the left-click button was released and we 
         # can stop the drag and drop process
         self.bind_all('<Motion>', self.stop_drag_and_drop)
         self.drag_and_drop = False
-        
+
         self.image = None
         self.bind_all('<B1-Motion>', lambda _:_)
 
     def stop_drag_and_drop(self, event):
         self.drag_and_drop = False
-        
+
     def start_drag_and_drop(self, event):
         self.drag_and_drop = True
-        
+
 class Menu(tk.Frame):
-        
+
     def __init__(self, controller):            
         super().__init__(controller)
         self.configure(background='#A1DBCD')   
 
         lf_creation = ttk.Labelframe(
-                                     self, 
-                                     text = 'Object management', 
-                                     padding = (6, 6, 12, 12)
-                                     )
+            self, 
+            text = 'Object management', 
+            padding = (6, 6, 12, 12)
+        )
         lf_creation.grid(row=0, column=0, padx=5, pady=5)
-        
+
         psf_object_label = tk.Label(
-                               self, 
-                               image = controller.psf_button_image, 
-                               relief = 'flat', 
-                               bg = '#A1DBCD'
-                               )
+            self, 
+            image = controller.psf_button_image, 
+            relief = 'flat', 
+            bg = '#A1DBCD'
+        )
         psf_object_label.bind('<Button-1>', controller.start_drag_and_drop)
         psf_object_label.grid(row=0, column=0, pady=10, padx=55, in_=lf_creation)
-        
-        import_nodes_button = ttk.Button(self, text='Import nodes',
-                            command=controller.map.import_nodes, width=20)
+
+        import_nodes_button = ttk.Button(
+            self,
+            text='Import nodes',
+            command=controller.map.import_nodes,
+            width=20
+        )
         import_nodes_button.grid(row=2, column=0, pady=5, in_=lf_creation)
-        
+
         lf_projection = ttk.Labelframe(
-                                       self, 
-                                       text = 'Projection management', 
-                                       padding = (6, 6, 12, 12)
-                                       )
+            self, 
+            text = 'Projection management', 
+            padding = (6, 6, 12, 12)
+        )
         lf_projection.grid(row=1, column=0, padx=5, pady=5)
-        
+
         self.projection_list = ttk.Combobox(self, width=18)
         self.projection_list['values'] = tuple(controller.map.projections)
         self.projection_list.current(0)
         self.projection_list.grid(row=0, column=0, in_=lf_projection)
-        
-        change_projection_button = ttk.Button(self, text='Change projection',
-                            command=controller.map.change_projection, width=20)
+
+        change_projection_button = ttk.Button(
+            self,
+            text='Change projection',
+            command=controller.map.change_projection,
+            width=20
+        )
         change_projection_button.grid(row=1, column=0, pady=5, in_=lf_projection)
-        
+
         lf_map_management = ttk.Labelframe(
-                                        self, 
-                                        text = 'Map management', 
-                                        padding = (6, 6, 12, 12)
-                                        )
+            self, 
+            text = 'Map management', 
+            padding = (6, 6, 12, 12)
+        )
         lf_map_management.grid(row=2, column=0, padx=5, pady=5)
-        
-        delete_map = ttk.Button(self, text='Delete map',
-                            command=controller.map.delete_map, width=20)
+
+        delete_map = ttk.Button(
+            self,
+            text='Delete map',
+            command=controller.map.delete_map,
+            width=20
+        )
         delete_map.grid(row=0, column=0, pady=5, in_=lf_map_management)
-        
-        delete_selection = ttk.Button(self, text='Delete selected nodes',
-                            command=controller.map.delete_selected_nodes, width=20)
+
+        delete_selection = ttk.Button(
+            self,
+            text='Delete selected nodes',
+            command=controller.map.delete_selected_nodes,
+            width=20
+        )
         delete_selection.grid(row=1, column=0, pady=5, in_=lf_map_management)
-        
+
+
 class PSF_Object():
-    
+
     type = 'node'
-        
+
     def __init__(self, id, label_id, x, y):
         self.id = id
         self.label_id = label_id
         self.x, self.y = x, y
         self.longitude, self.latitude = 0, 0
-        
+
+
 class Map(tk.Canvas):
-    
+
     projections = {
     'Mercator': pyproj.Proj(init="epsg:3395"),
     'Azimuthal orthographic': pyproj.Proj('+proj=ortho +lon_0=28 +lat_0=47')
     }
-    
+
     size = 10
-    
+
     def __init__(self, controller):
         super().__init__(controller, bg='white', width=1300, height=800)
         self.controller = controller
@@ -181,21 +190,21 @@ class Map(tk.Canvas):
         self.bind('<ButtonRelease-1>', self.end_point_select_nodes, add='+')
         self.tag_bind('node', '<Button-1>', self.find_closest_node)
         self.tag_bind('node', '<B1-Motion>', self.node_motion)
-        
+
     def update_coordinates(function):
         def wrapper(self, event, *others):
             event.x, event.y = self.canvasx(event.x), self.canvasy(event.y)
             function(self, event, *others)
         return wrapper
-        
+
     def to_canvas_coordinates(self, longitude, latitude):
         px, py = self.projections[self.proj](longitude, latitude)
         return px*self.ratio + self.offset[0], -py*self.ratio + self.offset[1]
-        
+
     def to_geographical_coordinates(self, x, y):
         px, py = (x - self.offset[0])/self.ratio, (self.offset[1] - y)/self.ratio
         return self.projections[self.proj](px, py, inverse=True)
-                
+
     def import_map(self):
         filepath = tk.filedialog.askopenfilenames(title='Import shapefile')
         if not filepath: 
@@ -203,7 +212,7 @@ class Map(tk.Canvas):
         else: 
             self.filepath ,= filepath
         self.draw_map()
-        
+
     def draw_map(self):
         if not self.filepath:
             return
@@ -218,18 +227,17 @@ class Map(tk.Canvas):
                 polygon = [polygon]
             for land in polygon:
                 self.create_polygon(
-                                    sum((self.to_canvas_coordinates(*c) 
-                                    for c in land.exterior.coords), ()),    
-                                    fill = 'green3', 
-                                    outline = 'black', 
-                                    tags = ('land',)
-                                    )
+                    sum((self.to_canvas_coordinates(*c) for c in land.exterior.coords), ()),    
+                    fill = 'green3', 
+                    outline = 'black', 
+                    tags = ('land',)
+                )
         self.redraw_nodes()
-        
+
     def delete_map(self):
         self.delete('land', 'water')
         self.filepath = None
-        
+
     def delete_selected_nodes(self):
         for node in self.selected_nodes:
             self.node_id_to_node.pop(node.id)
@@ -247,11 +255,11 @@ class Map(tk.Canvas):
             R = 6378000*self.ratio
             self.water_id = self.create_oval(cx - R, cy - R, cx + R, cy + R,
                         outline='black', fill='deep sky blue', tags=('water',))
-        
+
     def change_projection(self):
         self.proj = self.controller.menu.projection_list.get()
         self.draw_map()
-        
+
     def redraw_nodes(self):
         for node_id, node in self.node_id_to_node.items():
             cx, cy = self.to_canvas_coordinates(node.longitude, node.latitude)
@@ -260,7 +268,7 @@ class Map(tk.Canvas):
             self.update_node_label(node)
             self.tag_raise(node_id)
             self.tag_raise(node.label_id)
-        
+
     @update_coordinates
     def zoomer(self, event, factor=None):
         if not factor: 
@@ -274,40 +282,32 @@ class Map(tk.Canvas):
         for node_id, node in self.node_id_to_node.items():
             node.x, node.y = self.coords(node_id)
             self.update_node_label(node)
-            
+
     def update_node_label(self, node):
         node.longitude, node.latitude = self.to_geographical_coordinates(
                                                                 node.x, node.y)
         label = '({:.5f}, {:.5f})'.format(node.longitude, node.latitude)
         self.coords(node.label_id, node.x - 5, node.y + 30)
         self.itemconfig(node.label_id, text=label)
-           
+
     @update_coordinates            
     def drag_and_drop(self, event):
         if controller.drag_and_drop:
             self.create_object(event.x, event.y)
             controller.drag_and_drop = False
-                
+
     def create_object(self, x, y):
         # create the node's image
-        id = self.create_image(
-                               x, 
-                               y,
-                               image = controller.node_image,
-                               tags = ('node',)
-                               )
+        id = self.create_image(x, y,image = controller.node_image, tags = ('node',))
         # create the node's label
-        label_id = self.create_text(
-                                    x - 5, 
-                                    y + 30
-                                    )
+        label_id = self.create_text(x - 5, y + 30)
         # create the node object
         node = PSF_Object(id, label_id, x, y)
         # update the value of its label
         self.update_node_label(node)
         # store the node in the (node ID -> node) dictionnary
         self.node_id_to_node[id] = node
-                    
+
     @update_coordinates
     def find_closest_node(self, event):
         self.dict_start_position.clear()
@@ -321,7 +321,7 @@ class Map(tk.Canvas):
             self.unselect_all()
             self.dict_start_position[main_node_selected] = self.start_pos_main_node 
             self.select_objects(main_node_selected)
-            
+
     def select_objects(self, *objects):
         for obj in objects:
             self.selected_nodes.add(obj)
@@ -329,7 +329,7 @@ class Map(tk.Canvas):
                             obj.id, 
                             image = self.controller.selected_node_image
                             )
-                
+
     def unselect_objects(self, *objects):
         for obj in objects:
             self.selected_nodes.discard(obj)
@@ -337,10 +337,10 @@ class Map(tk.Canvas):
                             obj.id, 
                             image = self.controller.node_image
                             )
-                
+
     def unselect_all(self):
         self.unselect_objects(*self.selected_nodes)
-        
+
     @update_coordinates
     def start_point_select_objects(self, event):
         # create the temporary line, only if there is nothing below
@@ -352,11 +352,11 @@ class Map(tk.Canvas):
             self.unselect_all()
             self.start_position = event.x, event.y
             self.temp_rectangle = self.create_rectangle(
-                                                        event.x, 
-                                                        event.y, 
-                                                        event.x, 
-                                                        event.y
-                                                        )
+                event.x, 
+                event.y, 
+                event.x, 
+                event.y
+            )
             self.tag_raise(self.temp_rectangle)
 
     @update_coordinates
@@ -366,7 +366,7 @@ class Map(tk.Canvas):
             # update the position of the temporary lines
             x0, y0 = self.start_position
             self.coords(self.temp_rectangle, x0, y0, event.x, event.y)
-    
+
     @update_coordinates
     def end_point_select_nodes(self, event):
         if self.start_position != [None]*2:
@@ -379,7 +379,7 @@ class Map(tk.Canvas):
                     enclosed_obj = self.node_id_to_node[obj]
                     self.select_objects(enclosed_obj)
             self.start_position = [None]*2
-            
+
     @update_coordinates
     def node_motion(self, event):
         node = self.node_id_to_node[self.drag_item]
@@ -392,14 +392,10 @@ class Map(tk.Canvas):
             selected_node.x = x1 + (event.x - x0)
             selected_node.y = y1 + (event.y - y0)
             # move the node itself
-            self.coords(
-                        selected_node.id, 
-                        selected_node.x,
-                        selected_node.y
-                        )
+            self.coords(selected_node.id, selected_node.x, selected_node.y)
             # update the label
             self.update_node_label(selected_node)
-            
+
     def import_nodes(self):
         filepath = filedialog.askopenfilenames(filetypes = (('xls files','*.xls'),))
         if not filepath:
@@ -415,7 +411,7 @@ class Map(tk.Canvas):
         for row_index in range(1, sheet.nrows):
             x, y = self.to_canvas_coordinates(*sheet.row_values(row_index))
             self.create_object(x, y)
-        
+
 if str.__eq__(__name__, '__main__'):
     controller = Controller(path_app)
     controller.mainloop()
