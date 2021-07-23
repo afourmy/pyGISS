@@ -63,7 +63,7 @@ class Controller(QMainWindow):
     
     def __init__(self, path_app):
         super().__init__()
-        self.path_shapefiles = join(path_app, pardir, 'shapefiles')
+        self.path_shapefiles = join(path_app, pardir, 'shapefile')
         self.path_projects = join(path_app, pardir, 'projects')
         path_icon = join(path_app, pardir, 'images')
         self.setWindowIcon(QIcon(join(path_icon, 'globe.png')))
@@ -152,7 +152,7 @@ class View(QGraphicsView):
         self.proj = 'Spherical'
         self.ratio, self.offset = 1/400, (0, 0)
         self.display = True
-        self.shapefile = join(controller.path_shapefiles, 'World countries_1.shp')
+        self.shapefile = join(controller.path_shapefiles, 'ne_50m_admin_0_countries.shp')
         
         # brush for water and lands
         self.water_brush = QBrush(QColor(64, 164, 223))
